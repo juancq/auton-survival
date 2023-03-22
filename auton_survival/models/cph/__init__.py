@@ -70,11 +70,12 @@ class DeepCoxPH:
 
   """
 
-  def __init__(self, layers=None, random_seed=0):
+  def __init__(self, layers=None, random_seed=0, cuda=False):
 
     self.layers = layers
     self.fitted = False
     self.random_seed = random_seed
+    self.cuda = cuda
 
   def __call__(self):
     if self.fitted:
@@ -86,7 +87,10 @@ class DeepCoxPH:
 
   def _preprocess_test_data(self, x):
     x = _dataframe_to_array(x)
-    return torch.from_numpy(x).float()
+    x = torch.from_numpy(x).float()
+    if self.cuda:
+        x = x.cuda()
+    return x
 
   def _preprocess_training_data(self, x, t, e, vsize, val_data, random_seed):
 
@@ -126,6 +130,9 @@ class DeepCoxPH:
       t_val = torch.from_numpy(t_val).float()
       e_val = torch.from_numpy(e_val).float()
 
+    if self.cuda:
+      x_train, t_train, e_train = x_train.cuda(), t_train.cuda(), e_train.cuda()
+      x_val, t_val, e_val = x_val.cuda(), t_val.cuda(), e_val.cuda()
     return (x_train, t_train, e_train, x_val, t_val, e_val)
 
   def _gen_torch_model(self, inputdim, optimizer):
@@ -180,6 +187,8 @@ class DeepCoxPH:
     inputdim = x_train.shape[-1]
 
     model = self._gen_torch_model(inputdim, optimizer)
+    if self.cuda:
+        model = model.cuda()
 
     model, _ = train_dcph(model,
                           (x_train, t_train, e_train),
@@ -259,9 +268,9 @@ class DeepRecurrentCoxPH(DeepCoxPH):
 
   """
 
-  def __init__(self, layers=None, hidden=None, typ="LSTM", random_seed=0):
+  def __init__(self, layers=None, hidden=None, typ="LSTM", random_seed=0, cuda=False):
 
-    super(DeepRecurrentCoxPH, self).__init__(layers=layers)
+    super(DeepRecurrentCoxPH, self).__init__(layers=layers, cuda=cuda)
 
     self.typ = typ
     self.hidden = hidden
@@ -288,7 +297,10 @@ class DeepRecurrentCoxPH(DeepCoxPH):
   def _preprocess_test_data(self, x):
     if isinstance(x, pd.DataFrame):
       x = x.values
-    return torch.from_numpy(_get_padded_features(x)).float()
+    x = torch.from_numpy(_get_padded_features(x)).float()
+    if self.cuda:
+        x = x.cuda()
+    return x
 
   def _preprocess_training_data(self, x, t, e, vsize, val_data, random_seed):
     """RNNs require different preprocessing for variable length sequences"""
@@ -336,5 +348,9 @@ class DeepRecurrentCoxPH(DeepCoxPH):
       x_val = torch.from_numpy(x_val).float()
       t_val = torch.from_numpy(t_val).float()
       e_val = torch.from_numpy(e_val).float()
+
+      if self.cuda:
+        x_train, t_train, e_train = x_train.cuda(), t_train.cuda(), e_train.cuda()
+        x_val, t_val, e_val = x_val.cuda(), t_val.cuda(), e_val.cuda()
 
     return (x_train, t_train, e_train, x_val, t_val, e_val)
