@@ -158,6 +158,7 @@ Healthcare (2021)](https://arxiv.org/abs/2101.06536)</a>
 
 import torch
 import numpy as np
+import pandas as pd
 
 from .dsm_torch import DeepSurvivalMachinesTorch
 from .dsm_torch import DeepRecurrentSurvivalMachinesTorch
@@ -268,6 +269,7 @@ class DSMBase():
                          bs=batch_size,
                          random_seed=self.random_seed)
 
+    self.unique_times_ = np.sort(np.unique(t))
     self.torch_model = model.eval()
     self.fitted = True
 
@@ -395,7 +397,7 @@ class DSMBase():
                       "before calling `predict_risk`.")
 
 
-  def predict_survival(self, x, t, risk=1):
+  def predict_survival(self, x, t=None, risk=1):
     r"""Returns the estimated survival probability at time \( t \),
       \( \widehat{\mathbb{P}}(T > t|X) \) for some input data \( x \).
 
@@ -411,11 +413,15 @@ class DSMBase():
 
     """
     x = self._preprocess_test_data(x)
-    if not isinstance(t, list):
+    if t is None:
+        t = self.unique_times_
+    elif not isinstance(t, (list, np.ndarray)):
       t = [t]
     if self.fitted:
       scores = losses.predict_cdf(self.torch_model, x, t, risk=str(risk))
-      return np.exp(np.array(scores)).T
+      predictions = np.exp(np.array(scores)).T
+      predictions = pd.DataFrame(data=predictions, columns=self.unique_times_)
+      return predictions
     else:
       raise Exception("The model has not been fitted yet. Please fit the " +
                       "model using the `fit` method on some training data " +

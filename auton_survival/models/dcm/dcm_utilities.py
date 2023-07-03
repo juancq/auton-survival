@@ -4,6 +4,7 @@ from matplotlib.pyplot import get
 
 import torch
 import numpy as np
+import pandas as pd
 
 from scipy.interpolate import UnivariateSpline
 from sksurv.linear_model.coxph import BreslowEstimator
@@ -312,7 +313,10 @@ def predict_survival(model, x, t):
     expert_output = get_survival(lrisks, breslow_splines, t_)
     predictions.append((gate_probs*expert_output).sum(axis=1))
 
-  return np.array(predictions).T
+  predictions = np.array(predictions).T
+  predictions = pd.DataFrame(data=predictions, columns=t)
+  # todo: create another function predict_survival_df, like pycox
+  return predictions
 
 def predict_latent_z(model, x):
 

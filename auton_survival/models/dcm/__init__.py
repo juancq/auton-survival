@@ -222,13 +222,14 @@ class DeepCoxMixtures:
                          use_posteriors=True,
                          random_seed=self.random_seed)
 
+    self.unique_times_ = np.sort(np.unique(t))
     self.torch_model = (model[0].eval(), model[1])
     self.fitted = True
 
     return self
 
 
-  def predict_survival(self, x, t):
+  def predict_survival(self, x, t=None):
     r"""Returns the estimated survival probability at time \( t \),
       \( \widehat{\mathbb{P}}(T > t|X) \) for some input data \( x \).
 
@@ -244,7 +245,9 @@ class DeepCoxMixtures:
 
     """
     x = self._preprocess_test_data(x)
-    if not isinstance(t, list):
+    if t is None:
+        t = self.unique_times_
+    elif not isinstance(t, (list,np.ndarray)):
       t = [t]
     if self.fitted:
       scores = predict_survival(self.torch_model, x, t)
